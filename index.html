@@ -114,7 +114,7 @@
 								</ul>
 							</div>
 						</div>
-						<div class="card-body msg_card_body">
+						<div class="card-body msg_card_body" id="messages">
 							<div class="d-flex justify-content-start mb-4">
 								<div class="img_cont_msg">
 									<img src="https://static.turbosquid.com/Preview/001292/481/WV/_D.jpg" class="rounded-circle user_img_msg">
@@ -180,15 +180,8 @@
 							</div>
 						</div>
 						<div class="card-footer">
-							<div class="input-group">
-								<div class="input-group-append">
-									<span class="input-group-text attach_btn"><i class="fas fa-paperclip"></i></span>
-								</div>
-								<textarea name="" class="form-control type_msg" placeholder="Type your message..."></textarea>
-								<div class="input-group-append">
-									<span class="input-group-text send_btn"><i class="fas fa-location-arrow"></i></span>
-								</div>
-							</div>
+							<input type="text" id="messageInput" class="form-control type_msg" placeholder="Type your message...">
+							<button id="send" class="input-group-text send_btn"><i class="fas fa-location-arrow"></i></button>
 						</div>
 					</div>
 				</div>
@@ -197,6 +190,31 @@
 	<!-- JQuery -->
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 	<script type="text/javascript" src="scripts.js"></script>
+	<script>
+		var socket = new WebSocket('ws://localhost:6789');
+	
+		socket.onmessage = function(event) {
+			console.log('Message from server ', event.data);
+			var messages = document.getElementById('messages');
+			messages.innerHTML += '<div>' + event.data + '</div>'; // Displaying messages in a div
+		};
+	
+		function sendMessage() {
+			var input = document.getElementById('messageInput');
+			socket.send(input.value);  // Sending message to server
+			input.value = '';  // Clear the input after sending
+		}
+	
+		document.getElementById('send').addEventListener('click', function() {
+			sendMessage();
+		});
+	
+		document.getElementById('messageInput').addEventListener('keypress', function(e) {
+			if (e.key === 'Enter') {
+				sendMessage();
+			}
+		});
+	</script>
 	</body>
 </html>
 
