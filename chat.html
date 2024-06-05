@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css">
     <link rel="stylesheet" type="text/css" href="style.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script> <!-- Include Bootstrap JS -->
 </head>
 <body>
     <div class="container-fluid h-100">
@@ -19,11 +20,21 @@
                                 <span class="input-group-text search_btn"><i class="fas fa-search"></i></span>
                             </div>
                         </div>
+                        <div class="input-group">
+                            <input type="text" placeholder="Search Rooms..." id="searchRoomInput" class="form-control search">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text search_btn"><i class="fas fa-search"></i></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="card-body contacts_body">
                         <ul class="contacts" id="searchResults">
                             <!-- Search results will be dynamically added here -->
                         </ul>
+                        <ul class="contacts" id="roomSearchResults">
+                            <!-- Room search results will be dynamically added here -->
+                        </ul>
+                        <button id="createGroupChatBtn" class="btn btn-primary">Create Group Chat</button>
                     </div>
                     <div class="card-footer"></div>
                 </div>
@@ -38,7 +49,6 @@
                             </div>
                             <div class="user_info">
                                 <span id="chatRoomName">Chat Room</span>
-                                <p>1767 Messages</p>
                             </div>
                             <div class="video_cam">
                                 <span><i class="fas fa-video"></i></span>
@@ -66,6 +76,35 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal for creating group chat -->
+    <div class="modal fade" id="createGroupChatModal" tabindex="-1" role="dialog" aria-labelledby="createGroupChatModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="createGroupChatModalLabel">Create Group Chat</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="groupName">Group Name</label>
+              <input type="text" id="groupName" class="form-control" placeholder="Enter group name">
+            </div>
+            <div class="form-group">
+              <label for="groupUsers">Add Users</label>
+              <input type="text" id="groupUsers" class="form-control" placeholder="Enter usernames separated by commas">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="createGroupBtn">Create Group</button>
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="chat.js"></script>
 </body>
 </html>

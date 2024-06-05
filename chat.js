@@ -1,9 +1,9 @@
-$(document).ready(function(){
+$(document).ready(function() {
     var socket;
     var token = localStorage.getItem('token'); // Retrieve the token stored during sign-in
     var currentChatUser;
+    var localUserName = localStorage.getItem('username');
 
-    // Connect to WebSocket server and authenticate using the token
     function connectWebSocket() {
         socket = new WebSocket('ws://localhost:6789');
 
@@ -17,8 +17,19 @@ $(document).ready(function(){
             console.log('Message from server:', data);
             if (data.type === 'system') {
                 alert(data.message);
-            } else if (data.type === 'chat') {
+                if (data.message === 'Authentication successful') {
+                    localStorage.setItem('username', data.username);
+                    localUserName = data.username;
+                    console.log(`Authentication successful, username set to ${localUserName}`);
+                }
+            } else if (data.type === 'chat' || data.type === 'private_chat') {
                 addMessage(data.message, data.sender, 'incoming');
+                console.log(`Received message from ${data.sender}: ${data.message}`);
+                console.log(`currentChatUser before setting: ${currentChatUser}`);
+                if (data.sender !== localUserName) {
+                    currentChatUser = data.sender;
+                }
+                console.log(`currentChatUser after setting: ${currentChatUser}`);
             }
         };
 
@@ -34,9 +45,30 @@ $(document).ready(function(){
     function sendMessage() {
         var input = document.getElementById('messageInput');
         if (input.value.trim() !== '') {
-            socket.send(JSON.stringify({ action: 'message', message: input.value }));
+            var sender = localUserName;
+            var receiver = currentChatUser;
+            if (!receiver) {
+                console.log('No current chat user set');
+                return;
+            }
+
+            var room = generateRoomName(sender, receiver);
+
+            console.log(`Preparing to send message from ${sender} to ${receiver} in room ${room}`);
+            console.log(`Current sender: ${sender}, Current receiver: ${receiver}`);
+
+            socket.send(JSON.stringify({
+                action: 'private_message',
+                sender: sender,
+                receiver: receiver,
+                room: room,
+                message: input.value
+            }));
+            console.log(`Sending message from ${sender} to ${receiver} in room ${room}: ${input.value}`);
             addMessage(input.value, 'You', 'outgoing');
             input.value = '';  // Clear the input after sending
+        } else {
+            console.log('No message to send');
         }
     }
 
@@ -89,7 +121,7 @@ $(document).ready(function(){
         var results = $('#searchResults');
         results.empty();
         users.forEach(user => {
-            var userItem = `<li class="d-flex bd-highlight search-result" data-id="${user._id}" data-name="${user.name}">
+            var userItem = `<li class="d-flex bd-highlight search-result" data-name="${user.name}">
                                 <div class="user_info">
                                     <span>${user.name}</span>
                                     <p>${user.phone}</p>
@@ -99,16 +131,113 @@ $(document).ready(function(){
         });
 
         $('.search-result').click(function() {
-            var userId = $(this).data('id');
             var userName = $(this).data('name');
-            initiateChat(userId, userName);
+            console.log(`User ${userName} clicked for private chat.`);
+            initiatePrivateChat(userName);
         });
     }
 
-    function initiateChat(userId, userName) {
+    function generateRoomName(...users) {
+        return users.sort().join('_');
+    }
+
+    function initiatePrivateChat(userName) {
         currentChatUser = userName;
         $('#chatRoomName').text(userName);
-        socket.send(JSON.stringify({ action: 'join', nickname: userName, room: userId }));
+        var room = generateRoomName(localUserName, userName);
+
+        console.log(`Initiating private chat with ${userName}. Room: ${room}`);
+        console.log(`Current chat user set to ${currentChatUser}`);
+        console.log(`Local user: ${localUserName}`);
+
+        socket.send(JSON.stringify({ action: 'create_room', room: room }));
+        socket.send(JSON.stringify({ action: 'join', username: localUserName, room: room }));
+    }
+
+    // Group chat creation event handlers
+    $('#createGroupChatBtn').click(function() {
+        $('#createGroupChatModal').modal('show');
+    });
+
+    $('#createGroupBtn').click(function() {
+        var groupName = $('#groupName').val().trim();
+        var groupUsers = $('#groupUsers').val().trim().split(',').map(user => user.trim());
+        if (groupName && groupUsers.length > 0) {
+            var room = generateRoomName(groupName, ...groupUsers);
+
+            console.log(`Creating group chat with name: ${groupName}, Users: ${groupUsers}`);
+            // Send room creation request to the Flask server to save it in the database
+            $.ajax({
+                url: 'http://localhost:5000/create_room',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ room_name: room, users: groupUsers }),
+                success: function(response) {
+                    console.log('Room created:', response);
+                    socket.send(JSON.stringify({
+                        action: 'create_group_chat',
+                        groupName: groupName,
+                        users: groupUsers,
+                        room: room
+                    }));
+                    $('#createGroupChatModal').modal('hide');
+                },
+                error: function(xhr, status, error) {
+                    console.error('Room creation failed', xhr.responseJSON.message);
+                }
+            });
+        } else {
+            alert('Please enter a group name and at least one user.');
+        }
+    });
+
+    // Search for rooms
+    $('#searchRoomInput').on('input', function() {
+        var query = $(this).val();
+        if (query.trim() !== '') {
+            $.ajax({
+                url: 'http://localhost:5000/search_rooms',
+                type: 'GET',
+                data: { query: query },
+                success: function(response) {
+                    displayRoomSearchResults(response);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Search failed', xhr.responseJSON.message);
+                }
+            });
+        } else {
+            $('#roomSearchResults').empty();
+        }
+    });
+
+    function displayRoomSearchResults(rooms) {
+        var results = $('#roomSearchResults');
+        results.empty();
+        rooms.forEach(room => {
+            var roomItem = `<li class="d-flex bd-highlight room-search-result" data-name="${room.name}">
+                                <div class="user_info">
+                                    <span>${room.name}</span>
+                                </div>
+                            </li>`;
+            results.append(roomItem);
+        });
+
+        $('.room-search-result').click(function() {
+            var roomName = $(this).data('name');
+            console.log(`Room ${roomName} clicked for joining.`);
+            joinRoom(roomName);
+        });
+    }
+
+    function joinRoom(roomName) {
+        currentChatUser = roomName; // Set the current chat room to the selected room
+        $('#chatRoomName').text(roomName);
+
+        console.log(`Joining room: ${roomName}`);
+        console.log(`Local user: ${localUserName}`);
+
+        socket.send(JSON.stringify({ action: 'join', username: localUserName, room: roomName }));
     }
 
     connectWebSocket(); // Connect to WebSocket when the chat page loads

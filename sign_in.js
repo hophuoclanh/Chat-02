@@ -1,4 +1,4 @@
-$(document).ready(function(){
+$(document).ready(function() {
     let socket;
 
     $('#signInForm').submit(function(e) {
@@ -13,6 +13,8 @@ $(document).ready(function(){
             }),
             success: function(response) {
                 console.log('Sign in successful', response);
+                // Store the token in localStorage
+                localStorage.setItem('token', response.token);
                 // Connect to WebSocket and authenticate
                 connectWebSocket(response.token);
                 // Redirect to chat page
@@ -26,6 +28,11 @@ $(document).ready(function(){
     });
 
     function connectWebSocket(token) {
+        if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+            console.log("WebSocket connection already open or connecting");
+            return;
+        }
+
         socket = new WebSocket('ws://localhost:6789');
 
         socket.onopen = function() {
@@ -49,4 +56,10 @@ $(document).ready(function(){
             console.log('WebSocket error:', error);
         };
     }
+
+    window.onbeforeunload = function() {
+        if (socket) {
+            socket.close();
+        }
+    };
 });
