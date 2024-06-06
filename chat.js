@@ -3,6 +3,7 @@ $(document).ready(function() {
     var token = localStorage.getItem('token'); // Retrieve the token stored during sign-in
     var currentChatUser;
     var localUserName = localStorage.getItem('username');
+    var currentRoom;
 
     function connectWebSocket() {
         socket = new WebSocket('ws://localhost:6789');
@@ -21,15 +22,12 @@ $(document).ready(function() {
                     localStorage.setItem('username', data.username);
                     localUserName = data.username;
                     console.log(`Authentication successful, username set to ${localUserName}`);
+                } else if (data.message.includes('has joined the room')) {
+                    console.log('User joined the room:', data.message);
                 }
             } else if (data.type === 'chat' || data.type === 'private_chat') {
                 addMessage(data.message, data.sender, 'incoming');
                 console.log(`Received message from ${data.sender}: ${data.message}`);
-                console.log(`currentChatUser before setting: ${currentChatUser}`);
-                if (data.sender !== localUserName) {
-                    currentChatUser = data.sender;
-                }
-                console.log(`currentChatUser after setting: ${currentChatUser}`);
             }
         };
 
@@ -46,25 +44,22 @@ $(document).ready(function() {
         var input = document.getElementById('messageInput');
         if (input.value.trim() !== '') {
             var sender = localUserName;
-            var receiver = currentChatUser;
-            if (!receiver) {
-                console.log('No current chat user set');
+            var room = currentRoom;
+
+            if (!room) {
+                console.log('No current room set');
                 return;
             }
 
-            var room = generateRoomName(sender, receiver);
-
-            console.log(`Preparing to send message from ${sender} to ${receiver} in room ${room}`);
-            console.log(`Current sender: ${sender}, Current receiver: ${receiver}`);
+            console.log(`Preparing to send message from ${sender} in room ${room}`);
 
             socket.send(JSON.stringify({
                 action: 'private_message',
                 sender: sender,
-                receiver: receiver,
                 room: room,
                 message: input.value
             }));
-            console.log(`Sending message from ${sender} to ${receiver} in room ${room}: ${input.value}`);
+            console.log(`Sending message from ${sender} in room ${room}: ${input.value}`);
             addMessage(input.value, 'You', 'outgoing');
             input.value = '';  // Clear the input after sending
         } else {
@@ -149,9 +144,21 @@ $(document).ready(function() {
         console.log(`Initiating private chat with ${userName}. Room: ${room}`);
         console.log(`Current chat user set to ${currentChatUser}`);
         console.log(`Local user: ${localUserName}`);
+        currentRoom = room;
 
         socket.send(JSON.stringify({ action: 'create_room', room: room }));
         socket.send(JSON.stringify({ action: 'join', username: localUserName, room: room }));
+    }
+
+    function joinRoom(roomName) {
+        currentRoom = roomName; // Set the current chat room to the selected room
+        currentChatUser = null; // Invalidate the currentChatUser for group chat
+        $('#chatRoomName').text(roomName);
+
+        console.log(`Joining room: ${roomName}`);
+        console.log(`Local user: ${localUserName}`);
+
+        socket.send(JSON.stringify({ action: 'join', username: localUserName, room: roomName }));
     }
 
     // Group chat creation event handlers
@@ -228,16 +235,6 @@ $(document).ready(function() {
             console.log(`Room ${roomName} clicked for joining.`);
             joinRoom(roomName);
         });
-    }
-
-    function joinRoom(roomName) {
-        currentChatUser = roomName; // Set the current chat room to the selected room
-        $('#chatRoomName').text(roomName);
-
-        console.log(`Joining room: ${roomName}`);
-        console.log(`Local user: ${localUserName}`);
-
-        socket.send(JSON.stringify({ action: 'join', username: localUserName, room: roomName }));
     }
 
     connectWebSocket(); // Connect to WebSocket when the chat page loads
