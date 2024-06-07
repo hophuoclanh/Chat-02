@@ -96,6 +96,13 @@
               <label for="groupUsers">Add Users</label>
               <input type="text" id="groupUsers" class="form-control" placeholder="Enter usernames separated by commas">
             </div>
+            <div class="form-group">
+                <label for="searchUserInput">Search Users</label>
+                <input type="text" id="searchUserInput" class="form-control search" placeholder="Search for users...">
+                <ul class="contacts" id="userSearchResults">
+                    <!-- User search results will be dynamically added here -->
+                </ul>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-primary" id="createGroupBtn">Create Group</button>

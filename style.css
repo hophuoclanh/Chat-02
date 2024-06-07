@@ -279,7 +279,7 @@ html {
 /* Handle on hover */
 
 ::-webkit-scrollbar-thumb:hover {
-	background: #555;
+	background: #f1f1f1;
 }
 
 @media(max-width: 576px) {
@@ -287,4 +287,37 @@ html {
 		margin-bottom: 15px !important;
 	}
 }
+
+/* Set background color for the user search results */
+#userSearchResults {
+    list-style-type: none;
+    padding: 0;
+    background: #7F7FD5;
+	background: -webkit-linear-gradient(to right, #91EAE4, #86A8E7, #7F7FD5);
+	background: linear-gradient(to right, #91EAE4, #86A8E7, #7F7FD5);
+}
+
+.user-search-result {
+    border-bottom: 1px solid #ccc; /* Adjust border color if needed */
+    padding: 10px;
+    cursor: pointer;
+    background: -webkit-linear-gradient(to right, #91EAE4, #86A8E7, #7F7FD5);
+	background: linear-gradient(to right, #91EAE4, #86A8E7, #7F7FD5);
+    color: black; /* Ensure text color is visible */
+}
+
+.user-search-result:hover {
+    background-color: #f1f1f1; /* Change this to your desired hover background color */
+}
+
+/* Ensure user info within the results is visible */
+.user-search-result .user_info {
+    color: black; /* Ensure text is visible */
+}
+
+.msg_user {
+    font-weight: bold;
+    display: block;
+}
+
 
