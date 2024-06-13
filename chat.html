@@ -34,7 +34,7 @@
                         <ul class="contacts" id="roomSearchResults">
                             <!-- Room search results will be dynamically added here -->
                         </ul>
-                        <button id="createGroupChatBtn" class="btn btn-primary">Create Group Chat</button>
+                        <button id="createGroupChatBtn" class="btn btn-primary" data-toggle="modal" data-target="#createGroupChatModal">Create Group Chat</button>
                     </div>
                     <div class="card-footer"></div>
                 </div>
@@ -49,7 +49,7 @@
                             </div>
                             <div class="user_info">
                                 <span id="chatRoomName">Chat Room</span>
-                            </div>
+                            </div>                            
                             <div class="video_cam">
                                 <span><i class="fas fa-video"></i></span>
                                 <span><i class="fas fa-phone"></i></span>
@@ -78,39 +78,39 @@
     </div>
 
     <!-- Modal for creating group chat -->
-    <div class="modal fade" id="createGroupChatModal" tabindex="-1" role="dialog" aria-labelledby="createGroupChatModalLabel" aria-hidden="true">
-      <div class="modal-dialog" role="document">
+<div class="modal fade" id="createGroupChatModal" tabindex="-1" role="dialog" aria-labelledby="createGroupChatModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
         <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="createGroupChatModalLabel">Create Group Chat</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="groupName">Group Name</label>
-              <input type="text" id="groupName" class="form-control" placeholder="Enter group name">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createGroupChatModalLabel">Create Group Chat</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
-            <div class="form-group">
-              <label for="groupUsers">Add Users</label>
-              <input type="text" id="groupUsers" class="form-control" placeholder="Enter usernames separated by commas">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="groupName">Group Name</label>
+                    <input type="text" id="groupName" class="form-control" placeholder="Enter group name">
+                </div>
+                <div class="form-group">
+                    <label for="groupUsers">Add Users</label>
+                    <input type="text" id="groupUsers" class="form-control" placeholder="Enter phone numbers separated by commas">
+                </div>
+                <div class="form-group">
+                    <label for="searchUserInput">Search Users</label>
+                    <input type="text" id="searchUserInput" class="form-control search" placeholder="Search for users...">
+                    <ul class="contacts" id="userSearchResults">
+                        <!-- User search results will be dynamically added here -->
+                    </ul>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="searchUserInput">Search Users</label>
-                <input type="text" id="searchUserInput" class="form-control search" placeholder="Search for users...">
-                <ul class="contacts" id="userSearchResults">
-                    <!-- User search results will be dynamically added here -->
-                </ul>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="createGroupBtn">Create Group</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-primary" id="createGroupBtn">Create Group</button>
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-          </div>
         </div>
-      </div>
     </div>
+</div>
 
     <script src="chat.js"></script>
 </body>

@@ -2,8 +2,9 @@ $(document).ready(function() {
     var socket;
     var token = localStorage.getItem('token'); // Retrieve the token stored during sign-in
     var currentChatUser;
-    var localUserName = localStorage.getItem('username');
+    var localUserPhone = localStorage.getItem('userPhone'); // Retrieve the user's phone number
     var currentRoom;
+    var receiverName;
 
     function connectWebSocket() {
         socket = new WebSocket('ws://localhost:6789');
@@ -19,18 +20,18 @@ $(document).ready(function() {
             if (data.type === 'system') {
                 alert(data.message);
                 if (data.message === 'Authentication successful') {
-                    localStorage.setItem('username', data.username);
-                    localUserName = data.username;
-                    console.log(`Authentication successful, username set to ${localUserName}`);
+                    localStorage.setItem('userPhone', data.userPhone);
+                    localUserPhone = data.userPhone;
+                    console.log(`Authentication successful, userPhone set to ${localUserPhone}`);
                 } else if (data.message.includes('has joined the room')) {
                     console.log('User joined the room:', data.message);
-                }
+                } 
             } else if (data.type === 'chat' || data.type === 'private_chat') {
-                addMessage(data.message, data.sender, 'incoming');
-                console.log(`Received message from ${data.sender}: ${data.message}`);
+                addMessage(data.message, data.sender_name || data.sender, 'incoming');
+                console.log(`Received message from ${data.sender_name || data.sender}: ${data.message}`);
             }
-        };
-
+        };        
+        
         socket.onclose = function() {
             console.log('Disconnected from the WebSocket server.');
         };
@@ -40,32 +41,47 @@ $(document).ready(function() {
         };
     }
 
-    function sendMessage() {
+    async function sendMessage() {
         var input = document.getElementById('messageInput');
         if (input.value.trim() !== '') {
-            var sender = localUserName;
+            var senderPhone = localUserPhone;
             var room = currentRoom;
-
-            if (!room) {
-                console.log('No current room set');
+    
+            if (!room || !senderPhone) {
+                console.log('Missing room or sender information.');
+                console.log('Room:', room);
+                console.log('Sender Phone:', senderPhone);
                 return;
             }
-
-            console.log(`Preparing to send message from ${sender} in room ${room}`);
-
+    
+            console.log(`Preparing to send message from ${senderPhone} to all users in room ${room}`);
+    
+            // Fetch the sender's name from the server
+            let response = await fetch(`http://localhost:5000/get_user_by_phone?phone=${senderPhone}`);
+            let userData = await response.json();
+    
+            if (!userData || !userData.name) {
+                console.log('Failed to retrieve user name.');
+                return;
+            }
+    
+            var senderName = userData.name;
+    
+            // Send a broadcast message to the entire room
             socket.send(JSON.stringify({
-                action: 'private_message',
-                sender: sender,
+                action: 'message',
+                sender_name: senderName,
                 room: room,
                 message: input.value
             }));
-            console.log(`Sending message from ${sender} in room ${room}: ${input.value}`);
+    
+            console.log(`Sent message from ${senderName} to all users in room ${room}: ${input.value}`);
             addMessage(input.value, 'You', 'outgoing');
             input.value = '';  // Clear the input after sending
         } else {
             console.log('No message to send');
         }
-    }
+    }              
 
     function addMessage(msg, user, type) {
         var messages = document.getElementById('messages');
@@ -83,13 +99,11 @@ $(document).ready(function() {
             </div>`;
         messages.appendChild(msgDiv);
     }
-    
 
     function clearMessages() {
         var messages = document.getElementById('messages');
         messages.innerHTML = '';
     }
-
 
     document.getElementById('send').addEventListener('click', function() {
         sendMessage();
@@ -125,7 +139,7 @@ $(document).ready(function() {
         var results = $('#searchResults');
         results.empty();
         users.forEach(user => {
-            var userItem = `<li class="d-flex bd-highlight search-result" data-name="${user.name}">
+            var userItem = `<li class="d-flex bd-highlight search-result" data-phone="${user.phone}" data-name="${user.name}">
                                 <div class="user_info">
                                     <span>${user.name}</span>
                                     <p>${user.phone}</p>
@@ -133,18 +147,19 @@ $(document).ready(function() {
                             </li>`;
             results.append(userItem);
         });
-
+    
         $('.search-result').click(function() {
+            var userPhone = $(this).data('phone');
             var userName = $(this).data('name');
-            console.log(`User ${userName} clicked for private chat.`);
-            initiatePrivateChat(userName);
+            console.log(`User ${userPhone} clicked for private chat.`);
+            initiatePrivateChat(userPhone, userName);
             
             // Hide search results and clear the search input
             $('#searchInput').val('');
             $('#searchResults').empty();
         });
     }
-
+    
     $('#searchUserInput').on('input', function() {
         var query = $(this).val();
         if (query.trim() !== '') {
@@ -169,7 +184,7 @@ $(document).ready(function() {
         var results = $('#userSearchResults');
         results.empty();
         users.forEach(user => {
-            var userItem = `<li class="d-flex bd-highlight user-search-result" data-name="${user.name}">
+            var userItem = `<li class="d-flex bd-highlight user-search-result" data-phone="${user.phone}">
                                 <div class="user_info">
                                     <span>${user.name}</span>
                                     <p>${user.phone}</p>
@@ -179,11 +194,11 @@ $(document).ready(function() {
         });
 
         $('.user-search-result').click(function() {
-            var userName = $(this).data('name');
-            console.log(`User ${userName} clicked for adding to group.`);
+            var userPhone = $(this).data('phone');
+            console.log(`User ${userPhone} clicked for adding to group.`);
             var currentUsers = $('#groupUsers').val().split(',').map(user => user.trim());
-            if (!currentUsers.includes(userName)) {
-                currentUsers.push(userName);
+            if (!currentUsers.includes(userPhone)) {
+                currentUsers.push(userPhone);
                 $('#groupUsers').val(currentUsers.join(', '));
             }
             
@@ -197,21 +212,21 @@ $(document).ready(function() {
         return users.sort().join('_');
     }
 
-    function initiatePrivateChat(userName) {
+    function initiatePrivateChat(userPhone, userName) {
         clearMessages();  // Clear previous messages
-        currentChatUser = userName;
-        $('#chatRoomName').text(userName);
-        var room = generateRoomName(localUserName, userName);
+        currentChatUser = userPhone;
+        $('#chatRoomName').text(userName);  // Set to the username
+        var room = generateRoomName(localUserPhone, userPhone);
     
-        console.log(`Initiating private chat with ${userName}. Room: ${room}`);
+        console.log(`Initiating private chat with ${userPhone} (${userName}). Room: ${room}`);
         console.log(`Current chat user set to ${currentChatUser}`);
-        console.log(`Local user: ${localUserName}`);
+        console.log(`Local user: ${localUserPhone}`);
         currentRoom = room;
     
         socket.send(JSON.stringify({ action: 'create_room', room: room }));
-        socket.send(JSON.stringify({ action: 'join', username: localUserName, room: room }));
+        socket.send(JSON.stringify({ action: 'join_room', username: localUserPhone, room: room }));
     }
-
+       
     function joinRoom(roomName) {
         clearMessages();  // Clear previous messages
         currentRoom = roomName;  // Set the current chat room to the selected room
@@ -219,22 +234,25 @@ $(document).ready(function() {
         $('#chatRoomName').text(roomName);
     
         console.log(`Joining room: ${roomName}`);
-        console.log(`Local user: ${localUserName}`);
+        console.log(`Local user: ${localUserPhone}`);
     
-        socket.send(JSON.stringify({ action: 'join', username: localUserName, room: roomName }));
+        socket.send(JSON.stringify({ action: 'join_room', username: localUserPhone, room: roomName }));
     }
 
     // Group chat creation event handlers
     $('#createGroupBtn').click(function() {
         var groupName = $('#groupName').val().trim();
         var groupUsers = $('#groupUsers').val().trim().split(',').map(user => user.trim());
-        var localUserName = localStorage.getItem('username'); // Get the current user's username
+        var localUserPhone = localStorage.getItem('userPhone'); // Get the current user's phone
+    
+        // Remove any empty entries
+        groupUsers = groupUsers.filter(user => user !== '');
     
         if (groupName && groupUsers.length > 0) {
-            if (!groupUsers.includes(localUserName)) {
-                groupUsers.push(localUserName); // Add the current user to the list
+            if (!groupUsers.includes(localUserPhone)) {
+                groupUsers.push(localUserPhone); // Add the current user to the list
             }
-            var room = generateRoomName(groupName, ...groupUsers);
+            var roomName = groupName;  // Use groupName as the room name directly
     
             console.log(`Creating group chat with name: ${groupName}, Users: ${groupUsers}`);
             // Send room creation request to the Flask server to save it in the database
@@ -242,14 +260,14 @@ $(document).ready(function() {
                 url: 'http://localhost:5000/create_room',
                 type: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify({ room_name: room, users: groupUsers }),
+                data: JSON.stringify({ room_name: roomName, users: groupUsers }),
                 success: function(response) {
                     console.log('Room created:', response);
                     socket.send(JSON.stringify({
                         action: 'create_group_chat',
                         groupName: groupName,
                         users: groupUsers,
-                        room: room
+                        room: roomName
                     }));
                     $('#createGroupChatModal').modal('hide');
                 },
@@ -260,8 +278,7 @@ $(document).ready(function() {
         } else {
             alert('Please enter a group name and at least one user.');
         }
-    });
-    
+    });        
 
     // Search for rooms
     $('#searchRoomInput').on('input', function() {
@@ -284,7 +301,6 @@ $(document).ready(function() {
             $('#roomSearchResults').empty();
         }
     });
-    
 
     function displayRoomSearchResults(rooms) {
         var results = $('#roomSearchResults');
@@ -292,17 +308,17 @@ $(document).ready(function() {
         rooms.forEach(room => {
             var roomItem = `<li class="d-flex bd-highlight room-search-result" data-name="${room.name}">
                                 <div class="user_info">
-                                    <span>${room.name}</span>
+                                    <span>${room.name}</span>  <!-- Use display_name here -->
                                 </div>
                             </li>`;
             results.append(roomItem);
         });
-
+    
         $('.room-search-result').click(function() {
             var roomName = $(this).data('name');
             console.log(`Room ${roomName} clicked for joining.`);
             joinRoom(roomName);
-            
+    
             // Hide search results and clear the search input
             $('#searchRoomInput').val('');
             $('#roomSearchResults').empty();
